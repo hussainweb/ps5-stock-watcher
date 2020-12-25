@@ -1,5 +1,7 @@
 {
     "name": "hussainweb/ps5stockwatcher",
+    "description": "A simple PS5 stock watcher based on Amp",
+    "license": "proprietary",
     "require": {
         "amphp/amp": "^2.5"
     }
