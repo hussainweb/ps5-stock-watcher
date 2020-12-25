@@ -15,8 +15,12 @@ Loop::run(function () {
     $handler = new StreamHandler(Amp\ByteStream\getStdout());
     $handler->setFormatter(new ConsoleFormatter);
 
+    $mailHandler = new \Monolog\Handler\NativeMailerHandler("hussainweb@gmail.com", "Stock Checker Script", "hussainweb@gmail.com");
+    $mailHandler->setContentType("text/html");
+
     $logger = new Logger('ps5-stock-checker');
     $logger->pushHandler($handler);
+    $logger->pushHandler($mailHandler);
 
     $httpClientBuilder = new HttpClientBuilder();
     $httpClientBuilder->followRedirects(0);
