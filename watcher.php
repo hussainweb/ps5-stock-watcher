@@ -79,6 +79,7 @@ function getStockFromWalmartCa($_, $cbData): \Generator {
             'url' => 'https://www.walmart.ca/en/ip/playstation5-console/6000202198562',
             'availability' => $data['offers']['6000202198563']['gmAvailability'],
             'response_data' => $data,
+            'logger' => $logger,
         ]);
     }
     $logger->info("Walmart Check complete", ['status' => $status, 'availability' => $data['offers']['6000202198563']['gmAvailability']]);
@@ -116,11 +117,14 @@ function getStockFromBestBuyCa($_, $cbData): \Generator {
             'url' => 'https://www.bestbuy.ca/en-ca/product/playstation-5-console-online-only/14962185',
             'availability' => $data['availabilities'][0]['shipping']['status'],
             'response_data' => $data,
+            'logger' => $logger,
         ]);
     }
     $logger->info("BestBuy Check complete", ['status' => $status, 'availability' => $data['availabilities'][0]['shipping']['status']]);
 }
 
-function alertPS5Available($cbData) {
-    // @TODO
+function alertPS5Available($_, $cbData) {
+    /** @var Logger $logger */
+    $logger = $cbData['logger'];
+    $logger->alert("Stock found!", $cbData);
 }
