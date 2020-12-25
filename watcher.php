@@ -59,7 +59,7 @@ function getStockFromWalmartCa($_, $cbData): \Generator {
     $request->setHeader("Accept", "application/json");
     $request->setHeader("Accept-Language", "en-US,en;q=0.5");
     $request->setHeader("Referer", "https://www.walmart.ca/en/ip/playstation5-console/6000202198562");
-    @$request->setHeader("wm_qos.correlation_id", $correlationId);
+    $request->setHeader("wm_qos.correlation_id", $correlationId);
     $request->setHeader("content-type", "application/json");
     $request->setHeader("Cookie", $cookies);
 
