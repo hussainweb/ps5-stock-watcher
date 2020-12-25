@@ -3,6 +3,12 @@
     "description": "A simple PS5 stock watcher based on Amp",
     "license": "proprietary",
     "require": {
-        "amphp/amp": "^2.5"
+        "php": ">=7.4",
+        "amphp/amp": "^2.5",
+        "amphp/http-client": "^4.5",
+        "amphp/log": "^1.1"
+    },
+    "config": {
+        "sort-packages": true
     }
 }
