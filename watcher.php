@@ -44,13 +44,13 @@ function getStockFromWalmartCa($_, $cbData): \Generator {
     $response = yield $client->request($request);
 
     if ($response->getStatus() != 200) {
-        $logger->error("Initial page load failed: %s %s", $response->getStatus(), $response->getReason());
+        $logger->error("Initial page load failed", ['status' => $response->getStatus(), 'reason' => $response->getReason()]);
         return;
     }
 
     $cookies = $response->getHeaderArray("set-cookie");
     $correlationId = $response->getHeader("wm_qos.correlation_id");
-    $logger->info(sprintf("Walmart Initial page load correlation ID: %s", $correlationId));
+    $logger->info("Walmart Initial page load correlation ID", ['correlationId' => $correlationId]);
 
     // Now make the Ajax request for the page
     $url = "https://www.walmart.ca/api/product-page/v2/price-offer";
@@ -66,9 +66,8 @@ function getStockFromWalmartCa($_, $cbData): \Generator {
     /** @var \Amp\Http\Client\Response $response */
     $response = yield $client->request($request);
     $status = $response->getStatus();
-    $reason = $response->getReason();
     if ($status != 200) {
-        $logger->error(sprintf("%s %s", $status, $reason));
+        $logger->error("Walmart Check failed", ['status' => $status, 'reason' => $response->getReason()]);
         return;
     }
 
@@ -82,7 +81,7 @@ function getStockFromWalmartCa($_, $cbData): \Generator {
             'response_data' => $data,
         ]);
     }
-    $logger->info(sprintf("%s %s %s", $status, $reason, $data['offers']['6000202198563']['gmAvailability']));
+    $logger->info("Walmart Check complete", ['status' => $status, 'availability' => $data['offers']['6000202198563']['gmAvailability']]);
 }
 
 function getStockFromBestBuyCa($_, $cbData): \Generator {
@@ -103,9 +102,8 @@ function getStockFromBestBuyCa($_, $cbData): \Generator {
     /** @var \Amp\Http\Client\Response $response */
     $response = yield $client->request($request);
     $status = $response->getStatus();
-    $reason = $response->getReason();
     if ($status != 200) {
-        $logger->error(sprintf("%s %s", $status, $reason));
+        $logger->error("BestBuy Check failed", ['status' => $status, 'reason' => $response->getReason()]);
         return;
     }
 
@@ -120,7 +118,7 @@ function getStockFromBestBuyCa($_, $cbData): \Generator {
             'response_data' => $data,
         ]);
     }
-    $logger->info(sprintf("%s %s %s", $status, $reason, $data['availabilities'][0]['shipping']['status']));
+    $logger->info("BestBuy Check complete", ['status' => $status, 'availability' => $data['availabilities'][0]['shipping']['status']]);
 }
 
 function alertPS5Available($cbData) {
