@@ -1,0 +1,6 @@
+{
+    "name": "hussainweb/ps5stockwatcher",
+    "require": {
+        "amphp/amp": "^2.5"
+    }
+}
