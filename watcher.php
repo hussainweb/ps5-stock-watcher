@@ -9,6 +9,8 @@ use Monolog\Logger;
 
 require_once "vendor/autoload.php";
 
+ini_set('zend.assertions', 0);
+
 Loop::run(function () {
     $handler = new StreamHandler(Amp\ByteStream\getStdout());
     $handler->setFormatter(new ConsoleFormatter);
