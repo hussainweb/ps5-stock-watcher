@@ -23,6 +23,8 @@ Loop::run(function () {
     $mailHandler->setContentType("text/html");
 
     $logger = new Logger('ps5-stock-checker');
+    $logger->setTimezone(new DateTimeZone("America/Toronto"));
+    $logger->useMicrosecondTimestamps(false);
     $logger->pushHandler($handler);
     $logger->pushHandler($mailHandler);
 
