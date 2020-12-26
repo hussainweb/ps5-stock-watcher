@@ -11,7 +11,8 @@ require_once "vendor/autoload.php";
 
 ini_set('zend.assertions', 0);
 
-Loop::run(function () {
+Loop::run(function ()
+{
     $handler = new StreamHandler(Amp\ByteStream\getStdout());
     $handler->setFormatter(new ConsoleFormatter);
 
@@ -26,14 +27,23 @@ Loop::run(function () {
     $httpClientBuilder->followRedirects(0);
     $httpClient = $httpClientBuilder->build();
 
-    $walmartData = ['client' => $httpClient, 'logger' => $logger->withName('walmart-ps5-stock-checker'), 'delay' => [260, 390]];
-    $bestbuyData = ['client' => $httpClient, 'logger' => $logger->withName('bestbuy-ps5-stock-checker'), 'delay' => [50, 70]];
+    $walmartData = [
+        'client' => $httpClient,
+        'logger' => $logger->withName('walmart-ps5-stock-checker'),
+        'delay' => [260, 390]
+    ];
+    $bestbuyData = [
+        'client' => $httpClient,
+        'logger' => $logger->withName('bestbuy-ps5-stock-checker'),
+        'delay' => [50, 70]
+    ];
 
     Loop::delay(250, "getStockFromWalmartCa", $walmartData);
     Loop::delay(1500, "getStockFromBestBuyCa", $bestbuyData);
 });
 
-function getStockFromWalmartCa($_, $cbData): \Generator {
+function getStockFromWalmartCa($_, $cbData): \Generator
+{
     /** @var \Amp\Http\Client\HttpClient $client */
     $client = $cbData['client'];
     /** @var Logger $logger */
@@ -94,7 +104,8 @@ function getStockFromWalmartCa($_, $cbData): \Generator {
     Loop::delay(1000 * rand($delay[0], $delay[1]), __FUNCTION__, $cbData);
 }
 
-function getStockFromBestBuyCa($_, $cbData): \Generator {
+function getStockFromBestBuyCa($_, $cbData): \Generator
+{
     /** @var \Amp\Http\Client\HttpClient $client */
     $client = $cbData['client'];
     /** @var Logger $logger */
@@ -135,7 +146,8 @@ function getStockFromBestBuyCa($_, $cbData): \Generator {
     Loop::delay(1000 * rand($delay[0], $delay[1]), __FUNCTION__, $cbData);
 }
 
-function alertPS5Available($_, $cbData) {
+function alertPS5Available($_, $cbData)
+{
     /** @var Logger $logger */
     $logger = $cbData['logger'];
     $logger->alert("Stock found!", $cbData);
