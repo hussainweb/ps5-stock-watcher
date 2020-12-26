@@ -1,10 +1,13 @@
 <?php
 
+use Amp\Http\Client\Cookie\CookieInterceptor;
+use Amp\Http\Client\Cookie\InMemoryCookieJar;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Log\ConsoleFormatter;
 use Amp\Log\StreamHandler;
 use Amp\Loop;
+use Monolog\Handler\NativeMailerHandler;
 use Monolog\Logger;
 
 require_once "vendor/autoload.php";
@@ -16,7 +19,7 @@ Loop::run(function () {
     $handler = new StreamHandler(Amp\ByteStream\getStdout());
     $handler->setFormatter(new ConsoleFormatter());
 
-    $mailHandler = new \Monolog\Handler\NativeMailerHandler("hussainweb@gmail.com", "Stock Checker Script", "hussainweb@gmail.com");
+    $mailHandler = new NativeMailerHandler("hussainweb@gmail.com", "Stock Checker Script", "hussainweb@gmail.com");
     $mailHandler->setContentType("text/html");
 
     $logger = new Logger('ps5-stock-checker');
@@ -25,6 +28,7 @@ Loop::run(function () {
 
     $httpClientBuilder = new HttpClientBuilder();
     $httpClientBuilder->followRedirects(0);
+    $httpClientBuilder->interceptNetwork(new CookieInterceptor(new InMemoryCookieJar()));
     $httpClient = $httpClientBuilder->build();
 
     $walmartData = [
@@ -64,7 +68,6 @@ function getStockFromWalmartCa($_, $cbData): \Generator
         return;
     }
 
-    $cookies = $response->getHeaderArray("set-cookie");
     $correlationId = $response->getHeader("wm_qos.correlation_id");
     if (!$correlationId) {
         $logger->error("Could not find correlation ID", ['body' => yield $response->getBody()->buffer()]);
@@ -81,7 +84,6 @@ function getStockFromWalmartCa($_, $cbData): \Generator
     $request->setHeader("Referer", "https://www.walmart.ca/en/ip/playstation5-console/6000202198562");
     $request->setHeader("wm_qos.correlation_id", $correlationId);
     $request->setHeader("content-type", "application/json");
-    $request->setHeader("Cookie", $cookies);
 
     /** @var \Amp\Http\Client\Response $response */
     $response = yield $client->request($request);

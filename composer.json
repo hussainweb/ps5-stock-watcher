@@ -6,6 +6,7 @@
         "php": ">=7.4",
         "amphp/amp": "^2.5",
         "amphp/http-client": "^4.5",
+        "amphp/http-client-cookies": "^1.1",
         "amphp/log": "^1.1"
     },
     "require-dev": {
