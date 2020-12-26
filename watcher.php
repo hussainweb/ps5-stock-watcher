@@ -49,6 +49,10 @@ function getStockFromWalmartCa($_, $cbData): \Generator
     /** @var Logger $logger */
     $logger = $cbData['logger'];
 
+    // Delay is large enough for us to do this early.
+    $delay = $cbData['delay'];
+    Loop::delay(1000 * rand($delay[0], $delay[1]), __FUNCTION__, $cbData);
+
     $url = "https://www.walmart.ca/en/ip/playstation5-console/6000202198562";
     $request = new Request($url);
     $request->setHeader("User-Agent", USER_AGENT);
@@ -99,9 +103,6 @@ function getStockFromWalmartCa($_, $cbData): \Generator
         ]);
     }
     $logger->info("Walmart Check complete", ['status' => $status, 'availability' => $data['offers']['6000202198563']['gmAvailability']]);
-
-    $delay = $cbData['delay'];
-    Loop::delay(1000 * rand($delay[0], $delay[1]), __FUNCTION__, $cbData);
 }
 
 function getStockFromBestBuyCa($_, $cbData): \Generator
@@ -110,6 +111,10 @@ function getStockFromBestBuyCa($_, $cbData): \Generator
     $client = $cbData['client'];
     /** @var Logger $logger */
     $logger = $cbData['logger'];
+
+    // Delay is large enough for us to do this early.
+    $delay = $cbData['delay'];
+    Loop::delay(1000 * rand($delay[0], $delay[1]), __FUNCTION__, $cbData);
 
     $url = "https://www.bestbuy.ca/ecomm-api/availability/products?accept=application%2Fvnd.bestbuy.standardproduct.v1%2Bjson&accept-language=en-CA&locations=202%7C926%7C233%7C938%7C622%7C930%7C207%7C954%7C57%7C245%7C617%7C795%7C916%7C910%7C544%7C203%7C990%7C927%7C977%7C932%7C62%7C931%7C200%7C237%7C942%7C965%7C956%7C943%7C937%7C213%7C984%7C982%7C631%7C985&postalCode=L5R1V4&skus=14962185";
     $request = new Request($url);
@@ -141,9 +146,6 @@ function getStockFromBestBuyCa($_, $cbData): \Generator
         ]);
     }
     $logger->info("BestBuy Check complete", ['status' => $status, 'availability' => $data['availabilities'][0]['shipping']['status']]);
-
-    $delay = $cbData['delay'];
-    Loop::delay(1000 * rand($delay[0], $delay[1]), __FUNCTION__, $cbData);
 }
 
 function alertPS5Available($_, $cbData)
