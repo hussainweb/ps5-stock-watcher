@@ -75,7 +75,7 @@ function getStockFromWalmartCa($_, $cbData): \Generator
     // Now make the Ajax request for the page
     $url = "https://www.walmart.ca/api/product-page/v2/price-offer";
     $request = new Request($url, "POST", '{"fsa":"L5R","products":[{"productId":"6000202198562","skuIds":["6000202198563"]}],"lang":"en","pricingStoreId":"3055","fulfillmentStoreId":"1061","experience":"whiteGM"}');
-    $request->setHeader("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.16; rv:83.0) Gecko/20100101 Firefox/83.0");
+    $request->setHeader("User-Agent", USER_AGENT);
     $request->setHeader("Accept", "application/json");
     $request->setHeader("Accept-Language", "en-US,en;q=0.5");
     $request->setHeader("Referer", "https://www.walmart.ca/en/ip/playstation5-console/6000202198562");
