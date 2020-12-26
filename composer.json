@@ -8,7 +8,14 @@
         "amphp/http-client": "^4.5",
         "amphp/log": "^1.1"
     },
+    "require-dev": {
+        "squizlabs/php_codesniffer": "^3.5"
+    },
     "config": {
         "sort-packages": true
+    },
+    "scripts": {
+        "phpcs": "phpcs --standard=PSR12 watcher.php",
+        "phpcbf": "phpcbf --standard=PSR12 watcher.php"
     }
 }

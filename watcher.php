@@ -12,10 +12,9 @@ require_once "vendor/autoload.php";
 ini_set('zend.assertions', 0);
 const USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.16; rv:83.0) Gecko/20100101 Firefox/83.0";
 
-Loop::run(function ()
-{
+Loop::run(function () {
     $handler = new StreamHandler(Amp\ByteStream\getStdout());
-    $handler->setFormatter(new ConsoleFormatter);
+    $handler->setFormatter(new ConsoleFormatter());
 
     $mailHandler = new \Monolog\Handler\NativeMailerHandler("hussainweb@gmail.com", "Stock Checker Script", "hussainweb@gmail.com");
     $mailHandler->setContentType("text/html");
@@ -89,7 +88,7 @@ function getStockFromWalmartCa($_, $cbData): \Generator
     }
 
     $resp_json = yield $response->getBody()->buffer();
-    $data = \json_decode($resp_json, TRUE);
+    $data = \json_decode($resp_json, true);
     if ($data['offers']['6000202198563']['gmAvailability'] != "OutOfStock") {
         Loop::defer("alertPS5Available", [
             'source' => 'walmart',
@@ -131,7 +130,7 @@ function getStockFromBestBuyCa($_, $cbData): \Generator
 
     $resp_json = yield $response->getBody()->buffer();
     $resp_json = $string = preg_replace('/[\x00-\x1F\x7F-\xFF]/', '', trim($resp_json));
-    $data = \json_decode($resp_json, TRUE);
+    $data = \json_decode($resp_json, true);
     if ($data['availabilities'][0]['shipping']['status'] != "ComingSoon") {
         Loop::defer("alertPS5Available", [
             'source' => 'bestbuy',
