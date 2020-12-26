@@ -29,7 +29,7 @@ Loop::run(function () {
     $walmartData = ['client' => $httpClient, 'logger' => $logger->withName('walmart-ps5-stock-checker')];
     $bestbuyData = ['client' => $httpClient, 'logger' => $logger->withName('bestbuy-ps5-stock-checker')];
 
-    Loop::repeat(130000, "getStockFromWalmartCa", $walmartData);
+    Loop::repeat(390000, "getStockFromWalmartCa", $walmartData);
     Loop::delay(250, "getStockFromWalmartCa", $walmartData);
     Loop::repeat(70000, "getStockFromBestBuyCa", $bestbuyData);
     Loop::delay(1500, "getStockFromBestBuyCa", $bestbuyData);
