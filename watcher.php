@@ -10,6 +10,7 @@ use Monolog\Logger;
 require_once "vendor/autoload.php";
 
 ini_set('zend.assertions', 0);
+const USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.16; rv:83.0) Gecko/20100101 Firefox/83.0";
 
 Loop::run(function ()
 {
@@ -51,7 +52,7 @@ function getStockFromWalmartCa($_, $cbData): \Generator
 
     $url = "https://www.walmart.ca/en/ip/playstation5-console/6000202198562";
     $request = new Request($url);
-    $request->setHeader("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.16; rv:83.0) Gecko/20100101 Firefox/83.0");
+    $request->setHeader("User-Agent", USER_AGENT);
     /** @var \Amp\Http\Client\Response $response */
     $response = yield $client->request($request);
 
@@ -113,7 +114,7 @@ function getStockFromBestBuyCa($_, $cbData): \Generator
 
     $url = "https://www.bestbuy.ca/ecomm-api/availability/products?accept=application%2Fvnd.bestbuy.standardproduct.v1%2Bjson&accept-language=en-CA&locations=202%7C926%7C233%7C938%7C622%7C930%7C207%7C954%7C57%7C245%7C617%7C795%7C916%7C910%7C544%7C203%7C990%7C927%7C977%7C932%7C62%7C931%7C200%7C237%7C942%7C965%7C956%7C943%7C937%7C213%7C984%7C982%7C631%7C985&postalCode=L5R1V4&skus=14962185";
     $request = new Request($url);
-    $request->setHeader("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.16; rv:83.0) Gecko/20100101 Firefox/83.0");
+    $request->setHeader("User-Agent", USER_AGENT);
     $request->setHeader("Accept", "*/*");
     $request->setHeader("Accept-Language", "en-US,en;q=0.5");
     $request->setHeader("Referer", "https://www.bestbuy.ca/en-ca/product/playstation-5-console-online-only/14962185");
