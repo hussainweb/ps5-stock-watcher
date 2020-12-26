@@ -26,12 +26,10 @@ Loop::run(function () {
     $httpClientBuilder->followRedirects(0);
     $httpClient = $httpClientBuilder->build();
 
-    $walmartData = ['client' => $httpClient, 'logger' => $logger->withName('walmart-ps5-stock-checker')];
-    $bestbuyData = ['client' => $httpClient, 'logger' => $logger->withName('bestbuy-ps5-stock-checker')];
+    $walmartData = ['client' => $httpClient, 'logger' => $logger->withName('walmart-ps5-stock-checker'), 'delay' => [260, 390]];
+    $bestbuyData = ['client' => $httpClient, 'logger' => $logger->withName('bestbuy-ps5-stock-checker'), 'delay' => [50, 70]];
 
-    Loop::repeat(390000, "getStockFromWalmartCa", $walmartData);
     Loop::delay(250, "getStockFromWalmartCa", $walmartData);
-    Loop::repeat(70000, "getStockFromBestBuyCa", $bestbuyData);
     Loop::delay(1500, "getStockFromBestBuyCa", $bestbuyData);
 });
 
@@ -91,6 +89,9 @@ function getStockFromWalmartCa($_, $cbData): \Generator {
         ]);
     }
     $logger->info("Walmart Check complete", ['status' => $status, 'availability' => $data['offers']['6000202198563']['gmAvailability']]);
+
+    $delay = $cbData['delay'];
+    Loop::delay(1000 * rand($delay[0], $delay[1]), __FUNCTION__, $cbData);
 }
 
 function getStockFromBestBuyCa($_, $cbData): \Generator {
@@ -129,6 +130,9 @@ function getStockFromBestBuyCa($_, $cbData): \Generator {
         ]);
     }
     $logger->info("BestBuy Check complete", ['status' => $status, 'availability' => $data['availabilities'][0]['shipping']['status']]);
+
+    $delay = $cbData['delay'];
+    Loop::delay(1000 * rand($delay[0], $delay[1]), __FUNCTION__, $cbData);
 }
 
 function alertPS5Available($_, $cbData) {
