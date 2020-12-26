@@ -54,6 +54,10 @@ function getStockFromWalmartCa($_, $cbData): \Generator {
 
     $cookies = $response->getHeaderArray("set-cookie");
     $correlationId = $response->getHeader("wm_qos.correlation_id");
+    if (!$correlationId) {
+        $logger->error("Could not find correlation ID", ['body' => yield $response->getBody()->buffer()]);
+        return;
+    }
     $logger->info("Walmart Initial page load correlation ID", ['correlationId' => $correlationId]);
 
     // Now make the Ajax request for the page
