@@ -157,4 +157,8 @@ function alertPS5Available($_, $cbData)
     /** @var Logger $logger */
     $logger = $cbData['logger'];
     $logger->alert("Stock found!", $cbData);
+
+    if (PHP_OS_FAMILY == "Darwin") {
+        exec('say "PlayStation 5 Stock found on ' . $cbData['source'] . '"');
+    }
 }
