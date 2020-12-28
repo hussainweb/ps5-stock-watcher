@@ -72,7 +72,7 @@ function getStockFromWalmartCa($_, $cbData): \Generator
 
     $correlationId = $response->getHeader("wm_qos.correlation_id");
     if (!$correlationId) {
-        $logger->error("Could not find correlation ID", ['body' => yield $response->getBody()->buffer()]);
+        $logger->error("Could not find correlation ID", ['body' => strip_tags(yield $response->getBody()->buffer())]);
         return;
     }
     $logger->info("Walmart Initial page load correlation ID", ['correlationId' => $correlationId]);
