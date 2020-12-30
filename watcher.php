@@ -43,9 +43,15 @@ Loop::run(function () {
         'logger' => $logger->withName('bestbuy-ps5-stock-checker'),
         'delay' => [50, 70]
     ];
+    $ebgamesData = [
+        'client' => $httpClient,
+        'logger' => $logger->withName('ebgames-ps5-stock-checker'),
+        'delay' => [100, 170]
+    ];
 
     Loop::delay(250, "getStockFromWalmartCa", $walmartData);
     Loop::delay(1500, "getStockFromBestBuyCa", $bestbuyData);
+    Loop::delay(2000, "getStockFromEbGamesCa", $ebgamesData);
 });
 
 function getStockFromWalmartCa($_, $cbData): \Generator
@@ -72,7 +78,7 @@ function getStockFromWalmartCa($_, $cbData): \Generator
 
     $correlationId = $response->getHeader("wm_qos.correlation_id");
     if (!$correlationId) {
-        $logger->error("Could not find correlation ID", ['body' => strip_tags(yield $response->getBody()->buffer())]);
+        $logger->error("Could not find correlation ID", ['body' => stripHtml(cleanHtml(yield $response->getBody()->buffer()))]);
         return;
     }
     $logger->info("Walmart Initial page load correlation ID", ['correlationId' => $correlationId]);
@@ -150,6 +156,71 @@ function getStockFromBestBuyCa($_, $cbData): \Generator
         ]);
     }
     $logger->info("BestBuy Check complete", ['status' => $status, 'availability' => $data['availabilities'][0]['shipping']['status']]);
+}
+
+function getStockFromEbGamesCa($_, $cbData): \Generator
+{
+    /** @var \Amp\Http\Client\HttpClient $client */
+    $client = $cbData['client'];
+    /** @var Logger $logger */
+    $logger = $cbData['logger'];
+
+    // Delay is large enough for us to do this early.
+    $delay = $cbData['delay'];
+    Loop::delay(1000 * rand($delay[0], $delay[1]), __FUNCTION__, $cbData);
+
+    $url = "https://www.ebgames.ca/PS5/Games/877522/playstation-5";
+    $request = new Request($url);
+    $request->setHeader("User-Agent", USER_AGENT);
+    $request->setHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+    $request->setHeader("Accept-Language", "en-US,en;q=0.5");
+    $request->setHeader("Cache-Control", "max-age=0");
+
+    /** @var \Amp\Http\Client\Response $response */
+    $response = yield $client->request($request);
+    $status = $response->getStatus();
+    if ($status != 200) {
+        $logger->error("EBGames Check failed", ['status' => $status, 'reason' => $response->getReason()]);
+        return;
+    }
+
+    $resp = yield $response->getBody()->buffer();
+    $dom = new \DOMDocument();
+    @$dom->loadHTML($resp);
+    $xpath = new \DOMXPath($dom);
+    $elements = $xpath->query("//div[contains(@class, 'bigBuyButtons')]");
+    if ($elements->length != 1) {
+        $logger->error("Error parsing HTML");
+        return;
+    }
+    /** @var \DOMNode $block */
+    $block = $elements[0];
+    $data = $block->C14N();
+    if (strpos($data, "Out of Stock") === false) {
+        Loop::defer("alertPS5Available", [
+            'source' => 'ebgames',
+            'url' => $url,
+            'availability' => stripHtml(cleanHtml($data)),
+            'response_data' => $resp,
+            'logger' => $logger,
+        ]);
+    }
+    $logger->info("EBGames Check complete", ['status' => $status, 'availability' => stripHtml(cleanHtml($data))]);
+}
+
+function cleanHtml(string $html): string {
+    $html = preg_replace("#<head(.*?)>(.*?)</head>#is", "", $html);
+    $html = preg_replace("#<script(.*?)>(.*?)</script>#is", "", $html);
+    $html = preg_replace("#<style(.*?)>(.*?)</style>#is", "", $html);
+    return $html;
+}
+
+function stripHtml(string $html): string {
+    $html = html_entity_decode(strip_tags($html));
+    while (strpos($html, "  ")) {
+        $html = str_replace("  ", " ", $html);
+    }
+    return $html;
 }
 
 function alertPS5Available($_, $cbData)

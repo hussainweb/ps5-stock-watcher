@@ -27,6 +27,7 @@ It only checks for stock availability on these sites for now.
 
 - Walmart.ca
 - BestBuy.ca
+- EBGames.ca
 
 It doesn't order automatically and I don't think I will add that. This script
 just sends an email out but that is also very primitive (just using Monolog's
