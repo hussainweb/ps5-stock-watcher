@@ -146,16 +146,17 @@ function getStockFromBestBuyCa($_, $cbData): \Generator
     $resp_json = yield $response->getBody()->buffer();
     $resp_json = $string = preg_replace('/[\x00-\x1F\x7F-\xFF]/', '', trim($resp_json));
     $data = \json_decode($resp_json, true);
-    if ($data['availabilities'][0]['shipping']['status'] != "ComingSoon") {
+    $shippingStatus = $data['availabilities'][0]['shipping']['status'];
+    if (!in_array($shippingStatus, ["SoldOutOnline", "ComingSoon"])) {
         Loop::defer("alertPS5Available", [
             'source' => 'bestbuy',
             'url' => 'https://www.bestbuy.ca/en-ca/product/playstation-5-console-online-only/14962185',
-            'availability' => $data['availabilities'][0]['shipping']['status'],
+            'availability' => $shippingStatus,
             'response_data' => $data,
             'logger' => $logger,
         ]);
     }
-    $logger->info("BestBuy Check complete", ['status' => $status, 'availability' => $data['availabilities'][0]['shipping']['status']]);
+    $logger->info("BestBuy Check complete", ['status' => $status, 'availability' => $shippingStatus]);
 }
 
 function getStockFromEbGamesCa($_, $cbData): \Generator
