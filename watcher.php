@@ -78,7 +78,7 @@ function getStockFromWalmartCa($_, $cbData): \Generator
 
     $correlationId = $response->getHeader("wm_qos.correlation_id");
     if (!$correlationId) {
-        $logger->error("Could not find correlation ID", ['body' => stripHtml(cleanHtml(yield $response->getBody()->buffer()))]);
+        $logger->error("Could not find correlation ID", ['body' => trim(stripHtml(cleanHtml(yield $response->getBody()->buffer())))]);
         return;
     }
     $logger->info("Walmart Initial page load correlation ID", ['correlationId' => $correlationId]);
@@ -205,7 +205,7 @@ function getStockFromEbGamesCa($_, $cbData): \Generator
             'logger' => $logger,
         ]);
     }
-    $logger->info("EBGames Check complete", ['status' => $status, 'availability' => stripHtml(cleanHtml($data))]);
+    $logger->info("EBGames Check complete", ['status' => $status, 'availability' => trim(stripHtml(cleanHtml($data)))]);
 }
 
 function cleanHtml(string $html): string {
