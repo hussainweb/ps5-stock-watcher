@@ -3,6 +3,7 @@
 use Amp\Http\Client\Cookie\CookieInterceptor;
 use Amp\Http\Client\Cookie\InMemoryCookieJar;
 use Amp\Http\Client\HttpClientBuilder;
+use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Log\ConsoleFormatter;
 use Amp\Log\StreamHandler;
@@ -56,157 +57,172 @@ Loop::run(function () {
 
 function getStockFromWalmartCa($_, $cbData): \Generator
 {
-    /** @var \Amp\Http\Client\HttpClient $client */
-    $client = $cbData['client'];
-    /** @var Logger $logger */
-    $logger = $cbData['logger'];
+    try {
+        /** @var \Amp\Http\Client\HttpClient $client */
+        $client = $cbData['client'];
+        /** @var Logger $logger */
+        $logger = $cbData['logger'];
 
-    // Delay is large enough for us to do this early.
-    $delay = $cbData['delay'];
-    Loop::delay(1000 * rand($delay[0], $delay[1]), __FUNCTION__, $cbData);
+        // Delay is large enough for us to do this early.
+        $delay = $cbData['delay'];
+        Loop::delay(1000 * rand($delay[0], $delay[1]), __FUNCTION__, $cbData);
 
-    $url = "https://www.walmart.ca/en/ip/playstation5-console/6000202198562";
-    $request = new Request($url);
-    $request->setHeader("User-Agent", USER_AGENT);
-    /** @var \Amp\Http\Client\Response $response */
-    $response = yield $client->request($request);
+        $url = "https://www.walmart.ca/en/ip/playstation5-console/6000202198562";
+        $request = new Request($url);
+        $request->setHeader("User-Agent", USER_AGENT);
+        /** @var \Amp\Http\Client\Response $response */
+        $response = yield $client->request($request);
 
-    if ($response->getStatus() != 200) {
-        $logger->error("Initial page load failed", ['status' => $response->getStatus(), 'reason' => $response->getReason()]);
-        return;
+        if ($response->getStatus() != 200) {
+            $logger->error("Initial page load failed", ['status' => $response->getStatus(), 'reason' => $response->getReason()]);
+            return;
+        }
+
+        $correlationId = $response->getHeader("wm_qos.correlation_id");
+        if (!$correlationId) {
+            $logger->error("Could not find correlation ID", ['body' => trim(stripHtml(cleanHtml(yield $response->getBody()->buffer())))]);
+            return;
+        }
+        $logger->info("Walmart Initial page load correlation ID", ['correlationId' => $correlationId]);
+
+        // Now make the Ajax request for the page
+        $url = "https://www.walmart.ca/api/product-page/v2/price-offer";
+        $request = new Request($url, "POST", '{"fsa":"L5R","products":[{"productId":"6000202198562","skuIds":["6000202198563"]}],"lang":"en","pricingStoreId":"3055","fulfillmentStoreId":"1061","experience":"whiteGM"}');
+        $request->setHeader("User-Agent", USER_AGENT);
+        $request->setHeader("Accept", "application/json");
+        $request->setHeader("Accept-Language", "en-US,en;q=0.5");
+        $request->setHeader("Referer", "https://www.walmart.ca/en/ip/playstation5-console/6000202198562");
+        $request->setHeader("wm_qos.correlation_id", $correlationId);
+        $request->setHeader("content-type", "application/json");
+
+        /** @var \Amp\Http\Client\Response $response */
+        $response = yield $client->request($request);
+        $status = $response->getStatus();
+        if ($status != 200) {
+            $logger->error("Walmart Check failed", ['status' => $status, 'reason' => $response->getReason()]);
+            return;
+        }
+
+        $resp_json = yield $response->getBody()->buffer();
+        $data = \json_decode($resp_json, true);
+        if ($data['offers']['6000202198563']['gmAvailability'] != "OutOfStock") {
+            Loop::defer("alertPS5Available", [
+                'source' => 'walmart',
+                'url' => 'https://www.walmart.ca/en/ip/playstation5-console/6000202198562',
+                'availability' => $data['offers']['6000202198563']['gmAvailability'],
+                'response_data' => $data,
+                'logger' => $logger,
+            ]);
+        }
+        $logger->info("Walmart Check complete", ['status' => $status, 'availability' => $data['offers']['6000202198563']['gmAvailability']]);
     }
-
-    $correlationId = $response->getHeader("wm_qos.correlation_id");
-    if (!$correlationId) {
-        $logger->error("Could not find correlation ID", ['body' => trim(stripHtml(cleanHtml(yield $response->getBody()->buffer())))]);
-        return;
+    catch (HttpException $ex) {
+        $logger->error("Exception: " . $ex->getMessage());
     }
-    $logger->info("Walmart Initial page load correlation ID", ['correlationId' => $correlationId]);
-
-    // Now make the Ajax request for the page
-    $url = "https://www.walmart.ca/api/product-page/v2/price-offer";
-    $request = new Request($url, "POST", '{"fsa":"L5R","products":[{"productId":"6000202198562","skuIds":["6000202198563"]}],"lang":"en","pricingStoreId":"3055","fulfillmentStoreId":"1061","experience":"whiteGM"}');
-    $request->setHeader("User-Agent", USER_AGENT);
-    $request->setHeader("Accept", "application/json");
-    $request->setHeader("Accept-Language", "en-US,en;q=0.5");
-    $request->setHeader("Referer", "https://www.walmart.ca/en/ip/playstation5-console/6000202198562");
-    $request->setHeader("wm_qos.correlation_id", $correlationId);
-    $request->setHeader("content-type", "application/json");
-
-    /** @var \Amp\Http\Client\Response $response */
-    $response = yield $client->request($request);
-    $status = $response->getStatus();
-    if ($status != 200) {
-        $logger->error("Walmart Check failed", ['status' => $status, 'reason' => $response->getReason()]);
-        return;
-    }
-
-    $resp_json = yield $response->getBody()->buffer();
-    $data = \json_decode($resp_json, true);
-    if ($data['offers']['6000202198563']['gmAvailability'] != "OutOfStock") {
-        Loop::defer("alertPS5Available", [
-            'source' => 'walmart',
-            'url' => 'https://www.walmart.ca/en/ip/playstation5-console/6000202198562',
-            'availability' => $data['offers']['6000202198563']['gmAvailability'],
-            'response_data' => $data,
-            'logger' => $logger,
-        ]);
-    }
-    $logger->info("Walmart Check complete", ['status' => $status, 'availability' => $data['offers']['6000202198563']['gmAvailability']]);
 }
 
 function getStockFromBestBuyCa($_, $cbData): \Generator
 {
-    /** @var \Amp\Http\Client\HttpClient $client */
-    $client = $cbData['client'];
-    /** @var Logger $logger */
-    $logger = $cbData['logger'];
+    try {
+        /** @var \Amp\Http\Client\HttpClient $client */
+        $client = $cbData['client'];
+        /** @var Logger $logger */
+        $logger = $cbData['logger'];
 
-    // Delay is large enough for us to do this early.
-    $delay = $cbData['delay'];
-    Loop::delay(1000 * rand($delay[0], $delay[1]), __FUNCTION__, $cbData);
+        // Delay is large enough for us to do this early.
+        $delay = $cbData['delay'];
+        Loop::delay(1000 * rand($delay[0], $delay[1]), __FUNCTION__, $cbData);
 
-    $url = "https://www.bestbuy.ca/ecomm-api/availability/products?accept=application%2Fvnd.bestbuy.standardproduct.v1%2Bjson&accept-language=en-CA&locations=202%7C926%7C233%7C938%7C622%7C930%7C207%7C954%7C57%7C245%7C617%7C795%7C916%7C910%7C544%7C203%7C990%7C927%7C977%7C932%7C62%7C931%7C200%7C237%7C942%7C965%7C956%7C943%7C937%7C213%7C984%7C982%7C631%7C985&postalCode=L5R1V4&skus=14962185";
-    $request = new Request($url);
-    $request->setHeader("User-Agent", USER_AGENT);
-    $request->setHeader("Accept", "*/*");
-    $request->setHeader("Accept-Language", "en-US,en;q=0.5");
-    $request->setHeader("Referer", "https://www.bestbuy.ca/en-ca/product/playstation-5-console-online-only/14962185");
-    $request->setHeader("x-dtpc", "1$232704806_254h7vPCCHWJFTHUVPCJEUIQPMTKPGFCPHSGOJ-0e2");
-    $request->setHeader("Cache-Control", "max-age=0");
+        $url = "https://www.bestbuy.ca/ecomm-api/availability/products?accept=application%2Fvnd.bestbuy.standardproduct.v1%2Bjson&accept-language=en-CA&locations=202%7C926%7C233%7C938%7C622%7C930%7C207%7C954%7C57%7C245%7C617%7C795%7C916%7C910%7C544%7C203%7C990%7C927%7C977%7C932%7C62%7C931%7C200%7C237%7C942%7C965%7C956%7C943%7C937%7C213%7C984%7C982%7C631%7C985&postalCode=L5R1V4&skus=14962185";
+        $request = new Request($url);
+        $request->setHeader("User-Agent", USER_AGENT);
+        $request->setHeader("Accept", "*/*");
+        $request->setHeader("Accept-Language", "en-US,en;q=0.5");
+        $request->setHeader("Referer", "https://www.bestbuy.ca/en-ca/product/playstation-5-console-online-only/14962185");
+        $request->setHeader("x-dtpc", "1$232704806_254h7vPCCHWJFTHUVPCJEUIQPMTKPGFCPHSGOJ-0e2");
+        $request->setHeader("Cache-Control", "max-age=0");
 
-    /** @var \Amp\Http\Client\Response $response */
-    $response = yield $client->request($request);
-    $status = $response->getStatus();
-    if ($status != 200) {
-        $logger->error("BestBuy Check failed", ['status' => $status, 'reason' => $response->getReason()]);
-        return;
+        /** @var \Amp\Http\Client\Response $response */
+        $response = yield $client->request($request);
+        $status = $response->getStatus();
+        if ($status != 200) {
+            $logger->error("BestBuy Check failed", ['status' => $status, 'reason' => $response->getReason()]);
+            return;
+        }
+
+        $resp_json = yield $response->getBody()->buffer();
+        $resp_json = $string = preg_replace('/[\x00-\x1F\x7F-\xFF]/', '', trim($resp_json));
+        $data = \json_decode($resp_json, true);
+        $shippingStatus = $data['availabilities'][0]['shipping']['status'];
+        if (!in_array($shippingStatus, ["SoldOutOnline", "ComingSoon"])) {
+            Loop::defer("alertPS5Available", [
+                'source' => 'bestbuy',
+                'url' => 'https://www.bestbuy.ca/en-ca/product/playstation-5-console-online-only/14962185',
+                'availability' => $shippingStatus,
+                'response_data' => $data,
+                'logger' => $logger,
+            ]);
+        }
+        $logger->info("BestBuy Check complete", ['status' => $status, 'availability' => $shippingStatus]);
     }
-
-    $resp_json = yield $response->getBody()->buffer();
-    $resp_json = $string = preg_replace('/[\x00-\x1F\x7F-\xFF]/', '', trim($resp_json));
-    $data = \json_decode($resp_json, true);
-    $shippingStatus = $data['availabilities'][0]['shipping']['status'];
-    if (!in_array($shippingStatus, ["SoldOutOnline", "ComingSoon"])) {
-        Loop::defer("alertPS5Available", [
-            'source' => 'bestbuy',
-            'url' => 'https://www.bestbuy.ca/en-ca/product/playstation-5-console-online-only/14962185',
-            'availability' => $shippingStatus,
-            'response_data' => $data,
-            'logger' => $logger,
-        ]);
+    catch (HttpException $ex) {
+        $logger->error("Exception: " . $ex->getMessage());
     }
-    $logger->info("BestBuy Check complete", ['status' => $status, 'availability' => $shippingStatus]);
 }
 
 function getStockFromEbGamesCa($_, $cbData): \Generator
 {
-    /** @var \Amp\Http\Client\HttpClient $client */
-    $client = $cbData['client'];
-    /** @var Logger $logger */
-    $logger = $cbData['logger'];
+    try {
+        /** @var \Amp\Http\Client\HttpClient $client */
+        $client = $cbData['client'];
+        /** @var Logger $logger */
+        $logger = $cbData['logger'];
 
-    // Delay is large enough for us to do this early.
-    $delay = $cbData['delay'];
-    Loop::delay(1000 * rand($delay[0], $delay[1]), __FUNCTION__, $cbData);
+        // Delay is large enough for us to do this early.
+        $delay = $cbData['delay'];
+        Loop::delay(1000 * rand($delay[0], $delay[1]), __FUNCTION__, $cbData);
 
-    $url = "https://www.ebgames.ca/PS5/Games/877522/playstation-5";
-    $request = new Request($url);
-    $request->setHeader("User-Agent", USER_AGENT);
-    $request->setHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
-    $request->setHeader("Accept-Language", "en-US,en;q=0.5");
-    $request->setHeader("Cache-Control", "max-age=0");
+        $url = "https://www.ebgames.ca/PS5/Games/877522/playstation-5";
+        $request = new Request($url);
+        $request->setHeader("User-Agent", USER_AGENT);
+        $request->setHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+        $request->setHeader("Accept-Language", "en-US,en;q=0.5");
+        $request->setHeader("Cache-Control", "max-age=0");
 
-    /** @var \Amp\Http\Client\Response $response */
-    $response = yield $client->request($request);
-    $status = $response->getStatus();
-    if ($status != 200) {
-        $logger->error("EBGames Check failed", ['status' => $status, 'reason' => $response->getReason()]);
-        return;
+        /** @var \Amp\Http\Client\Response $response */
+        $response = yield $client->request($request);
+        $status = $response->getStatus();
+        if ($status != 200) {
+            $logger->error("EBGames Check failed", ['status' => $status, 'reason' => $response->getReason()]);
+            return;
+        }
+
+        $resp = yield $response->getBody()->buffer();
+        $dom = new \DOMDocument();
+        @$dom->loadHTML($resp);
+        $xpath = new \DOMXPath($dom);
+        $elements = $xpath->query("//div[contains(@class, 'bigBuyButtons')]");
+        if ($elements->length != 1) {
+            $logger->error("Error parsing HTML");
+            return;
+        }
+        /** @var \DOMNode $block */
+        $block = $elements[0];
+        $data = $block->C14N();
+        if (strpos($data, "Out of Stock") === false) {
+            Loop::defer("alertPS5Available", [
+                'source' => 'ebgames',
+                'url' => $url,
+                'availability' => stripHtml(cleanHtml($data)),
+                'response_data' => $resp,
+                'logger' => $logger,
+            ]);
+        }
+        $logger->info("EBGames Check complete", ['status' => $status, 'availability' => trim(stripHtml(cleanHtml($data)))]);
     }
-
-    $resp = yield $response->getBody()->buffer();
-    $dom = new \DOMDocument();
-    @$dom->loadHTML($resp);
-    $xpath = new \DOMXPath($dom);
-    $elements = $xpath->query("//div[contains(@class, 'bigBuyButtons')]");
-    if ($elements->length != 1) {
-        $logger->error("Error parsing HTML");
-        return;
+    catch (HttpException $ex) {
+        $logger->error("Exception: " . $ex->getMessage());
     }
-    /** @var \DOMNode $block */
-    $block = $elements[0];
-    $data = $block->C14N();
-    if (strpos($data, "Out of Stock") === false) {
-        Loop::defer("alertPS5Available", [
-            'source' => 'ebgames',
-            'url' => $url,
-            'availability' => stripHtml(cleanHtml($data)),
-            'response_data' => $resp,
-            'logger' => $logger,
-        ]);
-    }
-    $logger->info("EBGames Check complete", ['status' => $status, 'availability' => trim(stripHtml(cleanHtml($data)))]);
 }
 
 function cleanHtml(string $html): string {
